@@ -1,0 +1,39 @@
+name: Stakpak Agent
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Request to run the agent with
+        required: true
+
+jobs:
+  run_agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v14
+      - uses: DeterminateSystems/magic-nix-cache-action@v7
+
+
+
+
+      - name: Build stakpak tools
+        run: |
+          OUT=$(nix build ./.github/workflows/stakpak#stakpak-tools --no-link --print-out-paths)
+          echo "$OUT/bin" >> "$GITHUB_PATH"
+
+      - name: Tool versions
+        run: |
+          aws --version
+          terraform version || true
+          kubectl version --client=true --output=yaml | head -n 5
+          gh --version
+          docker --version || true
+
+      - name: Run Stakpak Agent
+        uses: stakpak/stakpak-action@v1.0.11
+        with:
+          api_key: ${{ secrets.STAKPAK_API_KEY }}
+          prompt: ${{ inputs.prompt }}
+          args: "--enable-slack-tools"
